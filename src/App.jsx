@@ -28,6 +28,7 @@ const initialOrders = [
     product: "근조 3단",
     orderAmount: 180000,
     delivery: "퀵",
+    location: "인천성모병원 장례식장",
     date: "2026-04-15",
     memo: "오전 배송",
   },
@@ -39,6 +40,7 @@ const initialOrders = [
     product: "개업화분",
     orderAmount: 200000,
     delivery: "자체배달",
+    location: "서울 강서구 마곡동",
     date: "2026-04-15",
     memo: "리본 문구 확인",
   },
@@ -50,6 +52,7 @@ const initialOrders = [
     product: "축하 3단",
     orderAmount: 220000,
     delivery: "퀵",
+    location: "김포 웨딩홀",
     date: "2026-04-14",
     memo: "행사장 정문",
   },
@@ -61,6 +64,7 @@ const initialOrders = [
     product: "몬스테라",
     orderAmount: 110000,
     delivery: "자체배달",
+    location: "부천시 상동 사무실",
     date: "2026-04-13",
     memo: "받는 분 연락 후 전달",
   },
@@ -94,9 +98,47 @@ export default function App() {
     product: "",
     orderAmount: "",
     delivery: "자체배달",
+    location: "",
     date: getToday(),
     memo: "",
   });
+  const [purchaseForm, setPurchaseForm] = useState({
+    type: "화환",
+    chain: "",
+    florist: "",
+    product: "",
+    purchaseAmount: "",
+    delivery: "자체배달",
+    location: "",
+    date: getToday(),
+    memo: "",
+  });
+  const [purchases, setPurchases] = useState([
+    {
+      id: 101,
+      type: "화환",
+      chain: "송죽플라워",
+      florist: "중앙화원",
+      product: "근조 3단",
+      purchaseAmount: 130000,
+      delivery: "퀵",
+      location: "인천성모병원 장례식장",
+      date: "2026-04-15",
+      memo: "대국 포함",
+    },
+    {
+      id: 102,
+      type: "식물",
+      chain: "반하다플라워",
+      florist: "그린화원",
+      product: "개업화분",
+      purchaseAmount: 145000,
+      delivery: "자체배달",
+      location: "서울 강서구 마곡동",
+      date: "2026-04-15",
+      memo: "도기화분 포함",
+    },
+  ]);
 
   const theme = darkMode ? darkTheme : lightTheme;
 
@@ -141,6 +183,42 @@ export default function App() {
       product: "",
       orderAmount: "",
       delivery: "자체배달",
+      location: "",
+      date: getToday(),
+      memo: "",
+    }));
+  };
+
+  const handlePurchaseSubmit = (e) => {
+    e.preventDefault();
+    if (!purchaseForm.chain || !purchaseForm.florist || !purchaseForm.product || !purchaseForm.purchaseAmount) return;
+
+    const newPurchase = {
+      id: Date.now(),
+      ...purchaseForm,
+      purchaseAmount: Number(purchaseForm.purchaseAmount),
+    };
+
+    setPurchases((prev) => [newPurchase, ...prev]);
+
+    if (!chainOptions.includes(purchaseForm.chain)) {
+      setChainOptions((prev) => [purchaseForm.chain, ...prev]);
+    }
+    if (!floristOptions.includes(purchaseForm.florist)) {
+      setFloristOptions((prev) => [purchaseForm.florist, ...prev]);
+    }
+    if (!productOptions.includes(purchaseForm.product)) {
+      setProductOptions((prev) => [purchaseForm.product, ...prev]);
+    }
+
+    setPurchaseForm((prev) => ({
+      ...prev,
+      chain: "",
+      florist: "",
+      product: "",
+      purchaseAmount: "",
+      delivery: "자체배달",
+      location: "",
       date: getToday(),
       memo: "",
     }));
@@ -246,7 +324,8 @@ export default function App() {
                             }}
                           />
                         </div>
-                        <div style={{ fontSize: 13, color: theme.muted }}>{item.month}</div>
+                        <div style={{ fontSize: 13, color: theme.muted, fontWeight: 700 }}>{item.month}</div>
+                        <div style={{ fontSize: 12, color: theme.text }}>{won(item.sales)}</div>
                       </div>
                     ))}
                   </div>
@@ -343,6 +422,13 @@ export default function App() {
                       />
 
                       <InputField
+                        label="배송장소"
+                        value={orderForm.location}
+                        onChange={(value) => setOrderForm((prev) => ({ ...prev, location: value }))}
+                        theme={theme}
+                      />
+
+                      <InputField
                         label="날짜"
                         type="date"
                         value={orderForm.date}
@@ -385,6 +471,7 @@ export default function App() {
                         <div>체인사</div>
                         <div>상품 / 구분</div>
                         <div>수주금액</div>
+                        <div>배송장소</div>
                       </div>
 
                       {todayOrders.length === 0 ? (
@@ -400,6 +487,7 @@ export default function App() {
                               <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div>
                             </div>
                             <div style={{ fontWeight: 800 }}>{won(row.orderAmount)}</div>
+                            <div style={{ color: theme.muted, lineHeight: 1.5 }}>{row.location}</div>
                           </div>
                         ))
                       )}
@@ -409,9 +497,133 @@ export default function App() {
               )}
 
               {activeOrderTab === "발주내역" && (
-                <div style={theme.mainCard}>
-                  <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 10 }}>발주내역</div>
-                  <div style={{ color: theme.muted }}>다음 단계에서 이어서 만들 수 있도록 비워두었습니다.</div>
+                <div className="bh-order-grid" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+                  <div style={theme.mainCard}>
+                    <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>발주등록</div>
+                    <form onSubmit={handlePurchaseSubmit} style={{ display: "grid", gap: 12 }}>
+                      <SelectField
+                        label="구분"
+                        value={purchaseForm.type}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, type: value }))}
+                        options={["화환", "식물"]}
+                        theme={theme}
+                      />
+
+                      <DatalistField
+                        label="체인"
+                        value={purchaseForm.chain}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, chain: value }))}
+                        options={chainOptions}
+                        listId="purchase-chain-options"
+                        theme={theme}
+                      />
+
+                      <DatalistField
+                        label="화원"
+                        value={purchaseForm.florist}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, florist: value }))}
+                        options={floristOptions}
+                        listId="purchase-florist-options"
+                        theme={theme}
+                      />
+
+                      <DatalistField
+                        label="상품명"
+                        value={purchaseForm.product}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, product: value }))}
+                        options={productOptions}
+                        listId="purchase-product-options"
+                        theme={theme}
+                      />
+
+                      <InputField
+                        label="발주금액"
+                        type="number"
+                        value={purchaseForm.purchaseAmount}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, purchaseAmount: value }))}
+                        theme={theme}
+                      />
+
+                      <SelectField
+                        label="배송방식"
+                        value={purchaseForm.delivery}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, delivery: value }))}
+                        options={["자체배달", "퀵"]}
+                        theme={theme}
+                      />
+
+                      <InputField
+                        label="배송장소"
+                        value={purchaseForm.location}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, location: value }))}
+                        theme={theme}
+                      />
+
+                      <InputField
+                        label="날짜"
+                        type="date"
+                        value={purchaseForm.date}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, date: value }))}
+                        theme={theme}
+                      />
+
+                      <TextAreaField
+                        label="메모"
+                        value={purchaseForm.memo}
+                        onChange={(value) => setPurchaseForm((prev) => ({ ...prev, memo: value }))}
+                        theme={theme}
+                      />
+
+                      <button type="submit" style={theme.primaryAction}>등록하기</button>
+                    </form>
+                  </div>
+
+                  <div style={theme.mainCard}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                      <div>
+                        <div style={{ fontSize: 24, fontWeight: 800 }}>발주내역</div>
+                        <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>당일 상품만 표시됩니다.</div>
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {["전체", "화환", "식물"].map((item) => (
+                          <button
+                            key={item}
+                            onClick={() => setOrderFilter(item)}
+                            style={orderFilter === item ? theme.filterActive : theme.filterButton}
+                          >
+                            {item}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: `1px solid ${theme.line}` }}>
+                      <div style={theme.listHeaderRow}>
+                        <div>체인사</div>
+                        <div>상품 / 구분</div>
+                        <div>발주금액</div>
+                        <div>배송장소</div>
+                      </div>
+
+                      {(orderFilter === "전체" ? purchases.filter((item) => item.date === getToday()) : purchases.filter((item) => item.date === getToday() && item.type === orderFilter)).length === 0 ? (
+                        <div style={{ padding: "36px 0", textAlign: "center", color: theme.muted }}>
+                          오늘 등록된 발주내역이 없습니다.
+                        </div>
+                      ) : (
+                        (orderFilter === "전체" ? purchases.filter((item) => item.date === getToday()) : purchases.filter((item) => item.date === getToday() && item.type === orderFilter)).map((row) => (
+                          <div key={row.id} style={theme.listRow}>
+                            <div style={{ fontWeight: 800 }}>{row.chain}</div>
+                            <div>
+                              <div style={{ fontWeight: 800 }}>{row.product}</div>
+                              <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div>
+                            </div>
+                            <div style={{ fontWeight: 800 }}>{won(row.purchaseAmount)}</div>
+                            <div style={{ color: theme.muted, lineHeight: 1.5 }}>{row.location}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -446,7 +658,7 @@ function SelectField({ label, value, onChange, options, theme }) {
   return (
     <label style={{ display: "grid", gap: 8 }}>
       <span style={theme.fieldLabel}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={theme.field}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={theme.selectField}>
         {options.map((item) => (
           <option key={item} value={item}>{item}</option>
         ))}
@@ -686,7 +898,7 @@ const lightTheme = {
   },
   listHeaderRow: {
     display: "grid",
-    gridTemplateColumns: "1.2fr 1fr 1fr",
+    gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr",
     gap: 16,
     padding: "18px 8px",
     color: "#94a3b8",
@@ -695,7 +907,7 @@ const lightTheme = {
   },
   listRow: {
     display: "grid",
-    gridTemplateColumns: "1.2fr 1fr 1fr",
+    gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr",
     gap: 16,
     alignItems: "center",
     padding: "20px 8px",
@@ -706,15 +918,17 @@ const lightTheme = {
     color: "#64748b",
     fontWeight: 600,
   },
-  field: {
+  field: {$1},
+  selectField: {
     width: "100%",
-    border: "1px solid #e7ebf3",
+    border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 14,
     padding: "0 14px",
     height: 48,
-    background: "white",
-    color: "#1f2937",
+    background: "rgba(255,255,255,0.03)",
+    color: "#f8fafc",
     outline: "none",
+    appearance: "auto",
   },
   muted: "#64748b",
   text: "#1f2937",
@@ -906,7 +1120,7 @@ const darkTheme = {
   },
   listHeaderRow: {
     display: "grid",
-    gridTemplateColumns: "1.2fr 1fr 1fr",
+    gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr",
     gap: 16,
     padding: "18px 8px",
     color: "#94a3b8",
@@ -915,7 +1129,7 @@ const darkTheme = {
   },
   listRow: {
     display: "grid",
-    gridTemplateColumns: "1.2fr 1fr 1fr",
+    gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr",
     gap: 16,
     alignItems: "center",
     padding: "20px 8px",

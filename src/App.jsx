@@ -2,10 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const TABS = ["홈", "수발주관리", "거래처정보", "거래처내역", "달력", "매출분석", "지출내역"];
 const ORDER_TABS = ["수주내역", "발주내역"];
-const EXPENSE_MAP = {
-  화환: ["대국값", "근조수거", "축하수거", "퀵비", "기타"],
-  식물: ["꽃값", "퀵비", "기타"],
-};
+const TODAY = "2026-04-15";
 
 const MONTHLY = [
   { month: "1월", sales: 1800000 },
@@ -16,7 +13,10 @@ const MONTHLY = [
   { month: "6월", sales: 2900000 },
 ];
 
-const TODAY = "2026-04-15";
+const EXPENSE_TYPES = {
+  화환: ["대국값", "근조수거", "축하수거", "퀵비", "기타"],
+  식물: ["꽃값", "퀵비", "기타"],
+};
 
 const DEFAULT_ORDERS = [
   { id: 1, type: "화환", chain: "송죽플라워", florist: "중앙화원", product: "근조 3단", amount: 180000, delivery: "퀵", location: "인천성모병원 장례식장", date: TODAY, memo: "오전 배송" },
@@ -78,87 +78,101 @@ function makePartnerSaleForm() {
 
 function makeExpenseForm(type = "화환") {
   const items = {};
-  EXPENSE_MAP[type].forEach((key) => {
-    items[key] = "";
+  EXPENSE_TYPES[type].forEach((k) => {
+    items[k] = "";
   });
   return { weekLabel: "2026년 4월 3주차", type, items, memo: "" };
 }
 
-function getCalendarMatrix(year, month) {
-  const first = new Date(year, month, 1);
-  const startDay = first.getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-  const prevLast = new Date(year, month, 0).getDate();
+function monthGrid(year, monthIndex) {
+  const first = new Date(year, monthIndex, 1);
+  const start = first.getDay();
+  const last = new Date(year, monthIndex + 1, 0).getDate();
+  const prevLast = new Date(year, monthIndex, 0).getDate();
   const cells = [];
   for (let i = 0; i < 42; i += 1) {
-    const n = i - startDay + 1;
-    if (n <= 0) cells.push({ date: new Date(year, month - 1, prevLast + n), current: false });
-    else if (n > lastDate) cells.push({ date: new Date(year, month + 1, n - lastDate), current: false });
-    else cells.push({ date: new Date(year, month, n), current: true });
+    const day = i - start + 1;
+    if (day <= 0) cells.push({ date: new Date(year, monthIndex - 1, prevLast + day), current: false });
+    else if (day > last) cells.push({ date: new Date(year, monthIndex + 1, day - last), current: false });
+    else cells.push({ date: new Date(year, monthIndex, day), current: true });
   }
   const weeks = [];
   for (let i = 0; i < 42; i += 7) weeks.push(cells.slice(i, i + 7));
   return weeks;
 }
 
-function Title({ children }) {
+const theme = {
+  page: { background: "linear-gradient(180deg, #090b11 0%, #11141d 100%)", color: "#f8fafc", minHeight: "100vh", padding: 18 },
+  wrap: { maxWidth: 1440, margin: "0 auto", borderRadius: 28, overflow: "hidden", background: "#121621", boxShadow: "0 30px 90px rgba(0,0,0,.45)", border: "1px solid rgba(255,255,255,.08)" },
+  top: { background: "linear-gradient(90deg, #12141d 0%, #1b2030 100%)", color: "#fff", padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  header: { background: "rgba(16,20,31,.95)", padding: "18px 32px", borderBottom: "1px solid rgba(255,255,255,.08)" },
+  tabs: { display: "flex", gap: 10, overflowX: "auto", padding: "16px 28px 0", background: "rgba(16,20,31,.95)", borderBottom: "1px solid rgba(255,255,255,.08)" },
+  tab: { border: "none", borderRadius: 14, padding: "12px 16px", background: "transparent", color: "#cbd5e1", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
+  tabActive: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 16px", background: "rgba(255,255,255,.08)", color: "#fff", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" },
+  subtab: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 18px", background: "rgba(255,255,255,.03)", color: "#cbd5e1", fontWeight: 700, cursor: "pointer" },
+  subtabActive: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 18px", background: "rgba(255,255,255,.1)", color: "#fff", fontWeight: 800, cursor: "pointer" },
+  body: { padding: 32, background: "linear-gradient(180deg, #121621 0%, #171c28 100%)" },
+  hero: { borderRadius: 28, padding: 28, background: "linear-gradient(135deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", display: "grid", gap: 18 },
+  search: { display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, padding: "12px 14px" },
+  searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 15, color: "#f8fafc" },
+  ask: { border: "none", borderRadius: 12, padding: "10px 14px", background: "rgba(255,255,255,.1)", color: "#fff", fontWeight: 700, cursor: "pointer" },
+  card: { background: "linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 28, padding: 24, boxShadow: "0 18px 40px rgba(0,0,0,.2)" },
+  summaryCard: { background: "linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 20, padding: 20 },
+  input: { width: "100%", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "0 14px", height: 48, background: "rgba(255,255,255,.03)", color: "#f8fafc", outline: "none" },
+  label: { fontSize: 13, color: "#94a3b8", fontWeight: 600 },
+  button: { border: "none", borderRadius: 16, background: "linear-gradient(135deg, #d8ba76 0%, #b78d44 100%)", color: "#fff", padding: "14px 20px", fontWeight: 800, cursor: "pointer" },
+  filter: { border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)", color: "#cbd5e1", borderRadius: 12, padding: "10px 14px", fontWeight: 700, cursor: "pointer" },
+  filterActive: { border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.12)", color: "#fff", borderRadius: 12, padding: "10px 14px", fontWeight: 800, cursor: "pointer" },
+  dataCard: { display: "grid", gap: 14, padding: 16, border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, background: "rgba(255,255,255,.03)" },
+  calendarCell: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, minHeight: 120, padding: 12, background: "rgba(255,255,255,.03)", textAlign: "left", cursor: "pointer" },
+  calendarText: { display: "block", fontSize: 12, color: "#cbd5e1" },
+  detailItem: { padding: "10px 12px", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, marginBottom: 8, background: "rgba(255,255,255,.03)" },
+  muted: "#94a3b8",
+  text: "#f8fafc",
+  accent: "#d7b36a",
+  line: "rgba(255,255,255,.08)",
+  bar: "linear-gradient(180deg, #d8ba76 0%, #c59d55 100%)",
+};
+
+function SectionTitle({ children }) {
   return <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>{children}</div>;
 }
 
-function Field({ label, children, theme }) {
+function SummaryCard({ label, value, accent, theme }) {
   return (
-    <label style={{ display: "grid", gap: 8 }}>
-      <span style={theme.label}>{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function TextInput({ label, value, onChange, theme, type = "text" }) {
-  return (
-    <Field label={label} theme={theme}>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={theme.input} />
-    </Field>
-  );
-}
-
-function SelectInput({ label, value, onChange, options, theme }) {
-  return (
-    <Field label={label} theme={theme}>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={theme.input}>
-        <option value="">선택</option>
-        {options.map((v) => (
-          <option key={v} value={v}>
-            {v}
-          </option>
-        ))}
-      </select>
-    </Field>
-  );
-}
-
-function TextareaInput({ label, value, onChange, theme }) {
-  return (
-    <Field label={label} theme={theme}>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={4} style={{ ...theme.input, minHeight: 100, paddingTop: 12, height: "auto" }} />
-    </Field>
-  );
-}
-
-function QuickFilters({ items, active, onChange, theme }) {
-  return (
-    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      {items.map((item) => (
-        <button key={item} onClick={() => onChange(item)} style={active === item ? theme.filterActive : theme.filter}>
-          {item}
-        </button>
-      ))}
+    <div style={theme.summaryCard}>
+      <div style={{ fontSize: 14, color: theme.muted }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 12, color: accent ? theme.accent : theme.text }}>{value}</div>
     </div>
   );
 }
 
-function CardList({ rows, columns, emptyText, theme }) {
-  if (rows.length === 0) return <div style={{ color: theme.muted, textAlign: "center", padding: "28px 0" }}>{emptyText}</div>;
+function TextInput({ label, value, onChange, theme, type = "text" }) {
+  return <label style={{ display: "grid", gap: 8 }}><span style={theme.label}>{label}</span><input type={type} value={value} onChange={(e) => onChange(e.target.value)} style={theme.input} /></label>;
+}
+
+function SelectInput({ label, value, onChange, options, theme }) {
+  return (
+    <label style={{ display: "grid", gap: 8 }}>
+      <span style={theme.label}>{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} style={theme.input}>
+        <option value="">선택</option>
+        {options.map((v) => <option key={v} value={v}>{v}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function TextareaInput({ label, value, onChange, theme }) {
+  return <label style={{ display: "grid", gap: 8 }}><span style={theme.label}>{label}</span><textarea value={value} onChange={(e) => onChange(e.target.value)} rows={4} style={{ ...theme.input, minHeight: 100, height: "auto", paddingTop: 12 }} /></label>;
+}
+
+function FilterButtons({ items, active, onChange, theme }) {
+  return <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{items.map((item) => <button key={item} onClick={() => onChange(item)} style={active === item ? theme.filterActive : theme.filter}>{item}</button>)}</div>;
+}
+
+function DataCards({ rows, columns, theme, emptyText }) {
+  if (rows.length === 0) return <div style={{ textAlign: "center", color: theme.muted, padding: "30px 0" }}>{emptyText}</div>;
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {rows.map((row) => (
@@ -175,90 +189,11 @@ function CardList({ rows, columns, emptyText, theme }) {
   );
 }
 
-function Summary({ label, value, theme, accent = false }) {
-  return (
-    <div style={theme.summaryCard}>
-      <div style={{ fontSize: 14, color: theme.muted }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, marginTop: 12, color: accent ? theme.accent : theme.text }}>{value}</div>
-    </div>
-  );
+function MetricRow({ label, value, theme, strong = false }) {
+  return <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "12px 0", borderBottom: `1px solid ${theme.line}` }}><div style={{ color: theme.muted }}>{label}</div><div style={{ fontWeight: strong ? 800 : 700 }}>{value}</div></div>;
 }
 
-const lightTheme = {
-  page: { background: "linear-gradient(180deg, #f2f4f8 0%, #eceff4 100%)", color: "#1f2937", minHeight: "100vh", padding: 18 },
-  wrap: { maxWidth: 1440, margin: "0 auto", borderRadius: 28, overflow: "hidden", background: "#f7f8fb", boxShadow: "0 30px 80px rgba(15,23,42,.16)" },
-  top: { background: "linear-gradient(90deg, #2d2f3d 0%, #1f2430 100%)", color: "#fff", padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  header: { background: "rgba(255,255,255,.95)", padding: "18px 32px", borderBottom: "1px solid #e8edf5" },
-  body: { padding: 32, background: "linear-gradient(135deg, #f7f8fb 0%, #eef2f7 100%)" },
-  tabs: { display: "flex", gap: 10, overflowX: "auto", padding: "16px 28px 0", background: "rgba(255,255,255,.95)", borderBottom: "1px solid #e8edf5" },
-  tab: { border: "none", borderRadius: 14, padding: "12px 16px", background: "transparent", color: "#475569", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
-  tabActive: { border: "none", borderRadius: 14, padding: "12px 16px", background: "#111827", color: "#fff", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" },
-  subtab: { border: "1px solid #e7ebf3", borderRadius: 14, padding: "12px 18px", background: "#fff", color: "#475569", fontWeight: 700, cursor: "pointer" },
-  subtabActive: { border: "none", borderRadius: 14, padding: "12px 18px", background: "#111827", color: "#fff", fontWeight: 800, cursor: "pointer" },
-  card: { background: "rgba(255,255,255,.9)", border: "1px solid #edf2f7", borderRadius: 28, padding: 24, boxShadow: "0 18px 40px rgba(15,23,42,.08)" },
-  summaryCard: { background: "rgba(255,255,255,.88)", border: "1px solid #edf2f7", borderRadius: 20, padding: 20 },
-  hero: { borderRadius: 28, padding: 28, background: "linear-gradient(135deg, rgba(255,255,255,.88) 0%, rgba(240,243,249,.84) 100%)", border: "1px solid rgba(255,255,255,.7)", display: "grid", gap: 18 },
-  search: { display: "flex", alignItems: "center", gap: 10, background: "#fff", border: "1px solid #e7ebf3", borderRadius: 18, padding: "12px 14px" },
-  searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 15, color: "#1f2937" },
-  ask: { border: "none", borderRadius: 12, padding: "10px 14px", background: "#111827", color: "#fff", fontWeight: 700, cursor: "pointer" },
-  button: { border: "none", borderRadius: 16, background: "linear-gradient(135deg, #d8ba76 0%, #b78d44 100%)", color: "#fff", padding: "14px 20px", fontWeight: 800, cursor: "pointer" },
-  filter: { border: "1px solid #e7ebf3", background: "#fff", color: "#475569", borderRadius: 12, padding: "10px 14px", fontWeight: 700, cursor: "pointer" },
-  filterActive: { border: "none", background: "#111827", color: "#fff", borderRadius: 12, padding: "10px 14px", fontWeight: 800, cursor: "pointer" },
-  input: { width: "100%", border: "1px solid #e7ebf3", borderRadius: 14, padding: "0 14px", height: 48, background: "#fff", color: "#1f2937", outline: "none" },
-  label: { fontSize: 13, color: "#64748b", fontWeight: 600 },
-  dataCard: { display: "grid", gap: 14, padding: 16, border: "1px solid #edf2f7", borderRadius: 18, background: "#fff" },
-  photoCard: { border: "1px solid #edf2f7", borderRadius: 18, padding: 12, background: "#fff" },
-  photoMock: { height: 120, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg, #f4efe4 0%, #e5eef7 100%)", fontSize: 30 },
-  photoImage: { width: "100%", height: 120, objectFit: "cover", borderRadius: 14, display: "block" },
-  upload: { border: "1px solid #e7ebf3", background: "#fff", borderRadius: 12, padding: "10px 14px", cursor: "pointer", fontWeight: 700, color: "#334155" },
-  calendarCell: { border: "1px solid #edf2f7", borderRadius: 18, minHeight: 120, padding: 12, background: "#fff", textAlign: "left", cursor: "pointer" },
-  calendarText: { display: "block", fontSize: 12, color: "#475569" },
-  detailItem: { padding: "10px 12px", border: "1px solid #edf2f7", borderRadius: 12, marginBottom: 8, background: "#fff" },
-  muted: "#64748b",
-  text: "#1f2937",
-  accent: "#bf9348",
-  line: "#edf2f7",
-  bar: "linear-gradient(180deg, #d8ba76 0%, #c59d55 100%)",
-};
-
-const darkTheme = {
-  ...lightTheme,
-  page: { background: "linear-gradient(180deg, #090b11 0%, #11141d 100%)", color: "#f8fafc", minHeight: "100vh", padding: 18 },
-  wrap: { maxWidth: 1440, margin: "0 auto", borderRadius: 28, overflow: "hidden", background: "#121621", boxShadow: "0 30px 90px rgba(0,0,0,.45)", border: "1px solid rgba(255,255,255,.08)" },
-  top: { background: "linear-gradient(90deg, #12141d 0%, #1b2030 100%)", color: "#fff", padding: "12px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  header: { background: "rgba(16,20,31,.95)", padding: "18px 32px", borderBottom: "1px solid rgba(255,255,255,.08)" },
-  body: { padding: 32, background: "linear-gradient(180deg, #121621 0%, #171c28 100%)" },
-  tabs: { display: "flex", gap: 10, overflowX: "auto", padding: "16px 28px 0", background: "rgba(16,20,31,.95)", borderBottom: "1px solid rgba(255,255,255,.08)" },
-  tab: { border: "none", borderRadius: 14, padding: "12px 16px", background: "transparent", color: "#cbd5e1", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
-  tabActive: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 16px", background: "rgba(255,255,255,.08)", color: "#fff", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" },
-  subtab: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 18px", background: "rgba(255,255,255,.03)", color: "#cbd5e1", fontWeight: 700, cursor: "pointer" },
-  subtabActive: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "12px 18px", background: "rgba(255,255,255,.1)", color: "#fff", fontWeight: 800, cursor: "pointer" },
-  card: { background: "linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 28, padding: 24, boxShadow: "0 18px 40px rgba(0,0,0,.2)" },
-  summaryCard: { background: "linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 20, padding: 20 },
-  hero: { borderRadius: 28, padding: 28, background: "linear-gradient(135deg, rgba(255,255,255,.04) 0%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.08)", display: "grid", gap: 18 },
-  search: { display: "flex", alignItems: "center", gap: 10, background: "rgba(255,255,255,.03)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, padding: "12px 14px" },
-  searchInput: { flex: 1, border: "none", outline: "none", background: "transparent", fontSize: 15, color: "#f8fafc" },
-  ask: { border: "none", borderRadius: 12, padding: "10px 14px", background: "rgba(255,255,255,.1)", color: "#fff", fontWeight: 700, cursor: "pointer" },
-  filter: { border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)", color: "#cbd5e1", borderRadius: 12, padding: "10px 14px", fontWeight: 700, cursor: "pointer" },
-  filterActive: { border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.12)", color: "#fff", borderRadius: 12, padding: "10px 14px", fontWeight: 800, cursor: "pointer" },
-  input: { width: "100%", border: "1px solid rgba(255,255,255,.08)", borderRadius: 14, padding: "0 14px", height: 48, background: "rgba(255,255,255,.03)", color: "#f8fafc", outline: "none" },
-  label: { fontSize: 13, color: "#94a3b8", fontWeight: 600 },
-  dataCard: { display: "grid", gap: 14, padding: 16, border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, background: "rgba(255,255,255,.03)" },
-  photoCard: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, padding: 12, background: "rgba(255,255,255,.03)" },
-  photoMock: { height: 120, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(215,179,106,.18) 0%, rgba(120,146,187,.18) 100%)", fontSize: 30 },
-  upload: { border: "1px solid rgba(255,255,255,.08)", background: "rgba(255,255,255,.04)", borderRadius: 12, padding: "10px 14px", cursor: "pointer", fontWeight: 700, color: "#e2e8f0" },
-  calendarCell: { border: "1px solid rgba(255,255,255,.08)", borderRadius: 18, minHeight: 120, padding: 12, background: "rgba(255,255,255,.03)", textAlign: "left", cursor: "pointer" },
-  calendarText: { display: "block", fontSize: 12, color: "#cbd5e1" },
-  detailItem: { padding: "10px 12px", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, marginBottom: 8, background: "rgba(255,255,255,.03)" },
-  muted: "#94a3b8",
-  text: "#f8fafc",
-  accent: "#d7b36a",
-  line: "rgba(255,255,255,.08)",
-};
-
 export default function App() {
-  const theme = darkTheme;
-
   const [tab, setTab] = useState("홈");
   const [orderTab, setOrderTab] = useState("수주내역");
   const [orderFilter, setOrderFilter] = useState("전체");
@@ -305,17 +240,9 @@ export default function App() {
     return purchaseFilter === "전체" ? base : base.filter((v) => v.type === purchaseFilter);
   }, [purchases, purchaseFilter]);
 
-  const filteredPartners = useMemo(() => {
-    return partnerFilter === "전체" ? partners : partners.filter((v) => v.category === partnerFilter);
-  }, [partners, partnerFilter]);
-
-  const filteredPartnerSales = useMemo(() => {
-    return partnerSaleFilter === "전체" ? partnerSales : partnerSales.filter((v) => v.type === partnerSaleFilter);
-  }, [partnerSales, partnerSaleFilter]);
-
-  const filteredExpenses = useMemo(() => {
-    return expenseFilter === "전체" ? expenses : expenses.filter((v) => v.type === expenseFilter);
-  }, [expenses, expenseFilter]);
+  const filteredPartners = useMemo(() => partnerFilter === "전체" ? partners : partners.filter((v) => v.category === partnerFilter), [partners, partnerFilter]);
+  const filteredPartnerSales = useMemo(() => partnerSaleFilter === "전체" ? partnerSales : partnerSales.filter((v) => v.type === partnerSaleFilter), [partnerSales, partnerSaleFilter]);
+  const filteredExpenses = useMemo(() => expenseFilter === "전체" ? expenses : expenses.filter((v) => v.type === expenseFilter), [expenses, expenseFilter]);
 
   const expenseSummary = useMemo(() => {
     const wreath = expenses.filter((v) => v.type === "화환").reduce((sum, v) => sum + v.total, 0);
@@ -327,17 +254,10 @@ export default function App() {
   const partnerRevenue = useMemo(() => partnerSales.reduce((sum, v) => sum + v.amount, 0), [partnerSales]);
 
   const topPartners = useMemo(() => {
-    return partners
-      .map((p) => ({
-        name: p.name,
-        total: partnerSales.filter((v) => v.partnerName === p.name).reduce((sum, v) => sum + v.amount, 0),
-      }))
-      .filter((v) => v.total > 0)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+    return partners.map((p) => ({ name: p.name, total: partnerSales.filter((v) => v.partnerName === p.name).reduce((sum, v) => sum + v.amount, 0) })).filter((v) => v.total > 0).sort((a, b) => b.total - a.total).slice(0, 5);
   }, [partners, partnerSales]);
 
-  const weeks = useMemo(() => getCalendarMatrix(calendarYear, calendarMonth), [calendarYear, calendarMonth]);
+  const weeks = useMemo(() => monthGrid(calendarYear, calendarMonth), [calendarYear, calendarMonth]);
 
   const calendarCounts = useMemo(() => {
     const map = {};
@@ -351,27 +271,18 @@ export default function App() {
     return map;
   }, [orders, purchases, partnerSales]);
 
-  const selectedDetail = useMemo(() => {
-    return {
-      수주: orders.filter((v) => v.date === selectedDate),
-      발주: purchases.filter((v) => v.date === selectedDate),
-      거래처: partnerSales.filter((v) => v.date === selectedDate),
-    };
-  }, [orders, purchases, partnerSales, selectedDate]);
+  const selectedDetail = useMemo(() => ({
+    수주: orders.filter((v) => v.date === selectedDate),
+    발주: purchases.filter((v) => v.date === selectedDate),
+    거래처: partnerSales.filter((v) => v.date === selectedDate),
+  }), [orders, purchases, partnerSales, selectedDate]);
 
-  const currentExpenseTotal = useMemo(() => {
-    return Object.values(expenseForm.items).reduce((sum, value) => sum + Number(value || 0), 0);
-  }, [expenseForm]);
-
-  function saveSharedTextOptions(form) {
-    if (!form.product) return;
-  }
+  const currentExpenseTotal = useMemo(() => Object.values(expenseForm.items).reduce((sum, value) => sum + Number(value || 0), 0), [expenseForm]);
 
   function submitOrder(e) {
     e.preventDefault();
     if (!orderForm.chain || !orderForm.florist || !orderForm.product || !orderForm.amount) return;
     setOrders((prev) => [{ id: Date.now(), ...orderForm, amount: Number(orderForm.amount) }, ...prev]);
-    saveSharedTextOptions(orderForm);
     setOrderForm(makeOrderForm());
   }
 
@@ -399,17 +310,7 @@ export default function App() {
   function submitExpense(e) {
     e.preventDefault();
     const total = Object.values(expenseForm.items).reduce((sum, value) => sum + Number(value || 0), 0);
-    setExpenses((prev) => [
-      {
-        id: Date.now(),
-        weekLabel: expenseForm.weekLabel,
-        type: expenseForm.type,
-        items: Object.fromEntries(Object.entries(expenseForm.items).map(([k, v]) => [k, Number(v || 0)])),
-        total,
-        memo: expenseForm.memo,
-      },
-      ...prev,
-    ]);
+    setExpenses((prev) => [{ id: Date.now(), weekLabel: expenseForm.weekLabel, type: expenseForm.type, items: Object.fromEntries(Object.entries(expenseForm.items).map(([k, v]) => [k, Number(v || 0)])), total, memo: expenseForm.memo }, ...prev]);
     setExpenseForm(makeExpenseForm(expenseForm.type));
   }
 
@@ -426,7 +327,7 @@ export default function App() {
         body { margin: 0; font-family: Inter, Pretendard, Arial, sans-serif; }
         button, input, select, textarea { font-family: inherit; }
         @media (max-width: 1180px) {
-          .grid-2, .grid-home, .grid-analytics, .grid-calendar { grid-template-columns: 1fr !important; }
+          .grid-two, .grid-home, .grid-analytics, .grid-calendar { grid-template-columns: 1fr !important; }
           .grid-summary { grid-template-columns: 1fr !important; }
         }
       `}</style>
@@ -439,9 +340,7 @@ export default function App() {
             <span style={{ width: 12, height: 12, borderRadius: 999, background: "#28c840" }} />
             <div style={{ marginLeft: 14, fontSize: 14, opacity: 0.9 }}>BLOOM HUB</div>
           </div>
-          <button onClick={() => setDarkMode((v) => !v)} style={theme.filter}>
-            {darkMode ? "라이트" : "다크"}
-          </button>
+          <button style={theme.filter}>최소 안정 버전</button>
         </div>
 
         <div style={theme.header}>
@@ -455,11 +354,7 @@ export default function App() {
         </div>
 
         <div style={theme.tabs}>
-          {TABS.map((v) => (
-            <button key={v} onClick={() => setTab(v)} style={tab === v ? theme.tabActive : theme.tab}>
-              {v}
-            </button>
-          ))}
+          {TABS.map((v) => <button key={v} onClick={() => setTab(v)} style={tab === v ? theme.tabActive : theme.tab}>{v}</button>)}
         </div>
 
         <div style={theme.body}>
@@ -469,24 +364,24 @@ export default function App() {
                 <div>
                   <div style={{ fontSize: 14, opacity: 0.75 }}>AI 비서</div>
                   <div style={{ fontSize: 28, fontWeight: 800, marginTop: 10, letterSpacing: "-0.03em" }}>오늘 업무를 빠르게 확인해보세요</div>
-                  <div style={{ marginTop: 10, color: theme.muted, lineHeight: 1.6 }}>이번달 매출, 지출, 최근 사진을 홈에서 바로 확인할 수 있어요.</div>
+                  <div style={{ marginTop: 10, color: theme.muted, lineHeight: 1.6 }}>이번달 매출, 지출을 홈에서 바로 확인할 수 있어요.</div>
                 </div>
                 <div style={theme.search}>
                   <span style={{ fontSize: 20, opacity: 0.55 }}>⌕</span>
-                  <input defaultValue="이번달 매출, 오늘 수주, 최근 등록 사진을 물어보세요..." style={theme.searchInput} />
+                  <input defaultValue="이번달 매출, 오늘 수주를 물어보세요..." style={theme.searchInput} />
                   <button style={theme.ask}>질문하기</button>
                 </div>
               </div>
 
               <div className="grid-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-                <Summary label="이번달 매출" value={won(currentMonthSales)} theme={theme} />
-                <Summary label="이번달 지출" value={won(currentMonthExpense)} theme={theme} />
-                <Summary label="순이익" value={won(currentMonthProfit)} accent theme={theme} />
+                <SummaryCard label="이번달 매출" value={won(currentMonthSales)} theme={theme} />
+                <SummaryCard label="이번달 지출" value={won(currentMonthExpense)} theme={theme} />
+                <SummaryCard label="순이익" value={won(currentMonthProfit)} accent theme={theme} />
               </div>
 
               <div className="grid-home" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 20 }}>
                 <div style={theme.card}>
-                  <Title>매출요약</Title>
+                  <SectionTitle>매출요약</SectionTitle>
                   <div style={{ display: "flex", alignItems: "end", gap: 14, height: 280 }}>
                     {MONTHLY.map((item) => (
                       <div key={item.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -501,18 +396,10 @@ export default function App() {
                 </div>
 
                 <div style={theme.card}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-                    <div style={{ fontSize: 24, fontWeight: 800 }}>사진방</div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    {[1, 2, 3, 4].map((id) => (
-                      <div key={id} style={theme.photoCard}>
-                        <div style={theme.photoMock}>📸</div>
-                        <div style={{ marginTop: 10, fontWeight: 700 }}>최근 사진</div>
-                        <div style={{ marginTop: 4, fontSize: 12, color: theme.muted }}>{formatDate(TODAY)}</div>
-                      </div>
-                    ))}
-                  </div>
+                  <SectionTitle>오늘 요약</SectionTitle>
+                  <MetricRow label="오늘 수주 건수" value={`${todayOrders.length}건`} theme={theme} />
+                  <MetricRow label="오늘 발주 건수" value={`${todayPurchases.length}건`} theme={theme} />
+                  <MetricRow label="거래처 수" value={`${partners.length}곳`} theme={theme} />
                 </div>
               </div>
             </div>
@@ -521,17 +408,13 @@ export default function App() {
           {tab === "수발주관리" && (
             <div style={{ display: "grid", gap: 18 }}>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {ORDER_TABS.map((v) => (
-                  <button key={v} onClick={() => setOrderTab(v)} style={orderTab === v ? theme.subtabActive : theme.subtab}>
-                    {v}
-                  </button>
-                ))}
+                {ORDER_TABS.map((v) => <button key={v} onClick={() => setOrderTab(v)} style={orderTab === v ? theme.subtabActive : theme.subtab}>{v}</button>)}
               </div>
 
               {orderTab === "수주내역" && (
-                <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+                <div className="grid-two" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
                   <div style={theme.card}>
-                    <Title>주문등록</Title>
+                    <SectionTitle>주문등록</SectionTitle>
                     <form onSubmit={submitOrder} style={{ display: "grid", gap: 12 }}>
                       <SelectInput label="구분" value={orderForm.type} onChange={(v) => setOrderForm((p) => ({ ...p, type: v }))} options={["화환", "식물"]} theme={theme} />
                       <TextInput label="체인" value={orderForm.chain} onChange={(v) => setOrderForm((p) => ({ ...p, chain: v }))} theme={theme} />
@@ -545,27 +428,21 @@ export default function App() {
                       <button type="submit" style={theme.button}>등록하기</button>
                     </form>
                   </div>
+
                   <div style={theme.card}>
-                    <HeaderWithFilters title="수주내역" subtitle="당일 상품만 표시됩니다." filters={["전체", "화환", "식물"]} active={orderFilter} onChange={setOrderFilter} theme={theme} />
-                    <CardList
-                      rows={todayOrders}
-                      columns={[
-                        { key: "chain", label: "체인사" },
-                        { label: "상품 / 구분", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> },
-                        { label: "수주금액", render: (row) => won(row.amount) },
-                        { key: "location", label: "배송장소" },
-                      ]}
-                      emptyText="오늘 등록된 내역이 없습니다."
-                      theme={theme}
-                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                      <div><div style={{ fontSize: 24, fontWeight: 800 }}>수주내역</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>당일 상품만 표시됩니다.</div></div>
+                      <FilterButtons items={["전체", "화환", "식물"]} active={orderFilter} onChange={setOrderFilter} theme={theme} />
+                    </div>
+                    <DataCards rows={todayOrders} columns={[{ key: "chain", label: "체인사" }, { label: "상품 / 구분", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> }, { label: "수주금액", render: (row) => won(row.amount) }, { key: "location", label: "배송장소" }]} theme={theme} emptyText="오늘 등록된 내역이 없습니다." />
                   </div>
                 </div>
               )}
 
               {orderTab === "발주내역" && (
-                <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+                <div className="grid-two" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
                   <div style={theme.card}>
-                    <Title>발주등록</Title>
+                    <SectionTitle>발주등록</SectionTitle>
                     <form onSubmit={submitPurchase} style={{ display: "grid", gap: 12 }}>
                       <SelectInput label="구분" value={purchaseForm.type} onChange={(v) => setPurchaseForm((p) => ({ ...p, type: v }))} options={["화환", "식물"]} theme={theme} />
                       <TextInput label="체인" value={purchaseForm.chain} onChange={(v) => setPurchaseForm((p) => ({ ...p, chain: v }))} theme={theme} />
@@ -579,19 +456,13 @@ export default function App() {
                       <button type="submit" style={theme.button}>등록하기</button>
                     </form>
                   </div>
+
                   <div style={theme.card}>
-                    <HeaderWithFilters title="발주내역" subtitle="당일 상품만 표시됩니다." filters={["전체", "화환", "식물"]} active={purchaseFilter} onChange={setPurchaseFilter} theme={theme} />
-                    <CardList
-                      rows={todayPurchases}
-                      columns={[
-                        { key: "chain", label: "체인사" },
-                        { label: "상품 / 구분", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> },
-                        { label: "발주금액", render: (row) => won(row.amount) },
-                        { key: "location", label: "배송장소" },
-                      ]}
-                      emptyText="오늘 등록된 내역이 없습니다."
-                      theme={theme}
-                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                      <div><div style={{ fontSize: 24, fontWeight: 800 }}>발주내역</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>당일 상품만 표시됩니다.</div></div>
+                      <FilterButtons items={["전체", "화환", "식물"]} active={purchaseFilter} onChange={setPurchaseFilter} theme={theme} />
+                    </div>
+                    <DataCards rows={todayPurchases} columns={[{ key: "chain", label: "체인사" }, { label: "상품 / 구분", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> }, { label: "발주금액", render: (row) => won(row.amount) }, { key: "location", label: "배송장소" }]} theme={theme} emptyText="오늘 등록된 내역이 없습니다." />
                   </div>
                 </div>
               )}
@@ -599,9 +470,9 @@ export default function App() {
           )}
 
           {tab === "거래처정보" && (
-            <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+            <div className="grid-two" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.card}>
-                <Title>거래처 등록</Title>
+                <SectionTitle>거래처 등록</SectionTitle>
                 <form onSubmit={submitPartner} style={{ display: "grid", gap: 12 }}>
                   <TextInput label="거래처 종류" value={partnerForm.category} onChange={(v) => setPartnerForm((p) => ({ ...p, category: v }))} theme={theme} />
                   <TextInput label="개인/상호" value={partnerForm.name} onChange={(v) => setPartnerForm((p) => ({ ...p, name: v }))} theme={theme} />
@@ -614,28 +485,19 @@ export default function App() {
               </div>
 
               <div style={theme.card}>
-                <HeaderWithFilters title="거래처정보" filters={["전체", ...Array.from(new Set(partners.map((v) => v.category).filter(Boolean)))]} active={partnerFilter} onChange={setPartnerFilter} theme={theme} />
-                <CardList
-                  rows={filteredPartners}
-                  columns={[
-                    { key: "category", label: "거래처 종류" },
-                    { key: "name", label: "개인/상호" },
-                    { key: "phone", label: "연락처" },
-                    { key: "account", label: "계좌" },
-                    { key: "priceBand", label: "발주금액대" },
-                    { key: "memo", label: "메모" },
-                  ]}
-                  emptyText="등록된 거래처가 없습니다."
-                  theme={theme}
-                />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                  <div style={{ fontSize: 24, fontWeight: 800 }}>거래처정보</div>
+                  <FilterButtons items={["전체", ...Array.from(new Set(partners.map((v) => v.category).filter(Boolean)))]} active={partnerFilter} onChange={setPartnerFilter} theme={theme} />
+                </div>
+                <DataCards rows={filteredPartners} columns={[{ key: "category", label: "거래처 종류" }, { key: "name", label: "개인/상호" }, { key: "phone", label: "연락처" }, { key: "account", label: "계좌" }, { key: "priceBand", label: "발주금액대" }, { key: "memo", label: "메모" }]} theme={theme} emptyText="등록된 거래처가 없습니다." />
               </div>
             </div>
           )}
 
           {tab === "거래처내역" && (
-            <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+            <div className="grid-two" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.card}>
-                <Title>거래 등록</Title>
+                <SectionTitle>거래 등록</SectionTitle>
                 <form onSubmit={submitPartnerSale} style={{ display: "grid", gap: 12 }}>
                   <SelectInput label="거래처명" value={partnerSaleForm.partnerName} onChange={(v) => setPartnerSaleForm((p) => ({ ...p, partnerName: v }))} options={partners.map((v) => v.name)} theme={theme} />
                   <SelectInput label="거래종류" value={partnerSaleForm.type} onChange={(v) => setPartnerSaleForm((p) => ({ ...p, type: v }))} options={["화환", "식물", "기타"]} theme={theme} />
@@ -649,18 +511,11 @@ export default function App() {
               </div>
 
               <div style={theme.card}>
-                <HeaderWithFilters title="거래처내역" subtitle="거래처 매출 기록입니다." filters={["전체", "화환", "식물", "기타"]} active={partnerSaleFilter} onChange={setPartnerSaleFilter} theme={theme} />
-                <CardList
-                  rows={filteredPartnerSales}
-                  columns={[
-                    { key: "partnerName", label: "거래처명" },
-                    { label: "상품 / 거래종류", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> },
-                    { label: "매출금액", render: (row) => won(row.amount) },
-                    { key: "payment", label: "결제방식" },
-                  ]}
-                  emptyText="등록된 거래내역이 없습니다."
-                  theme={theme}
-                />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                  <div><div style={{ fontSize: 24, fontWeight: 800 }}>거래처내역</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>거래처 매출 기록입니다.</div></div>
+                  <FilterButtons items={["전체", "화환", "식물", "기타"]} active={partnerSaleFilter} onChange={setPartnerSaleFilter} theme={theme} />
+                </div>
+                <DataCards rows={filteredPartnerSales} columns={[{ key: "partnerName", label: "거래처명" }, { label: "상품 / 거래종류", render: (row) => <><div>{row.product}</div><div style={{ marginTop: 4, fontSize: 13, color: theme.muted }}>{row.type}</div></> }, { label: "매출금액", render: (row) => won(row.amount) }, { key: "payment", label: "결제방식" }]} theme={theme} emptyText="등록된 거래내역이 없습니다." />
               </div>
             </div>
           )}
@@ -674,26 +529,16 @@ export default function App() {
                     <div style={{ fontSize: 24, fontWeight: 800 }}>{calendarYear}년 {calendarMonth + 1}월</div>
                     <button style={theme.filter} onClick={() => moveMonth(1)}>다음달</button>
                   </div>
-                  <QuickFilters items={["전체", "수주", "발주", "거래처"]} active={calendarFilter} onChange={setCalendarFilter} theme={theme} />
+                  <FilterButtons items={["전체", "수주", "발주", "거래처"]} active={calendarFilter} onChange={setCalendarFilter} theme={theme} />
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
-                  {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-                    <div key={day} style={{ textAlign: "center", fontWeight: 800, padding: "8px 0" }}>{day}</div>
-                  ))}
+                  {["일", "월", "화", "수", "목", "금", "토"].map((day) => <div key={day} style={{ textAlign: "center", fontWeight: 800, padding: "8px 0" }}>{day}</div>)}
                   {weeks.flat().map((cell) => {
                     const iso = cell.date.toISOString().slice(0, 10);
                     const counts = calendarCounts[iso] || { 수주: 0, 발주: 0, 거래처: 0 };
                     return (
-                      <button
-                        key={iso}
-                        onClick={() => setSelectedDate(iso)}
-                        style={{
-                          ...theme.calendarCell,
-                          opacity: cell.current ? 1 : 0.45,
-                          borderColor: selectedDate === iso ? theme.accent : theme.line,
-                        }}
-                      >
+                      <button key={iso} onClick={() => setSelectedDate(iso)} style={{ ...theme.calendarCell, opacity: cell.current ? 1 : 0.45, borderColor: selectedDate === iso ? theme.accent : theme.line }}>
                         <div style={{ fontWeight: 800 }}>{cell.date.getDate()}</div>
                         {calendarFilter === "전체" ? (
                           <div style={{ display: "grid", gap: 4, marginTop: 8, textAlign: "left" }}>
@@ -702,9 +547,7 @@ export default function App() {
                             {counts.거래처 > 0 && <span style={theme.calendarText}>거래처 {counts.거래처}건</span>}
                           </div>
                         ) : (
-                          <div style={{ marginTop: 8, textAlign: "left" }}>
-                            <span style={theme.calendarText}>{calendarFilter} {counts[calendarFilter] || 0}건</span>
-                          </div>
+                          <div style={{ marginTop: 8, textAlign: "left" }}><span style={theme.calendarText}>{calendarFilter} {counts[calendarFilter] || 0}건</span></div>
                         )}
                       </button>
                     );
@@ -713,10 +556,16 @@ export default function App() {
               </div>
 
               <div style={theme.card}>
-                <Title>{formatDate(selectedDate)} 상세</Title>
-                <DetailSection title="수주" rows={selectedDetail.수주} formatter={(item) => `${item.product} / ${item.chain} / ${won(item.amount)}`} theme={theme} />
-                <DetailSection title="발주" rows={selectedDetail.발주} formatter={(item) => `${item.product} / ${item.florist} / ${won(item.amount)}`} theme={theme} />
-                <DetailSection title="거래처" rows={selectedDetail.거래처} formatter={(item) => `${item.product} / ${item.partnerName} / ${won(item.amount)}`} theme={theme} />
+                <SectionTitle>{formatDate(selectedDate)} 상세</SectionTitle>
+                {selectedDetail.수주.length === 0 && selectedDetail.발주.length === 0 && selectedDetail.거래처.length === 0 ? (
+                  <div style={{ color: theme.muted }}>선택한 날짜의 일정이 없습니다.</div>
+                ) : (
+                  <>
+                    {selectedDetail.수주.map((item) => <div key={item.id} style={theme.detailItem}>수주 · {item.product} / {item.chain} / {won(item.amount)}</div>)}
+                    {selectedDetail.발주.map((item) => <div key={item.id} style={theme.detailItem}>발주 · {item.product} / {item.florist} / {won(item.amount)}</div>)}
+                    {selectedDetail.거래처.map((item) => <div key={item.id} style={theme.detailItem}>거래처 · {item.product} / {item.partnerName} / {won(item.amount)}</div>)}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -724,14 +573,14 @@ export default function App() {
           {tab === "매출분석" && (
             <div style={{ display: "grid", gap: 20 }}>
               <div className="grid-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
-                <Summary label="총 매출" value={won(orderSales + partnerRevenue)} theme={theme} />
-                <Summary label="총 지출" value={won(expenseSummary.total)} theme={theme} />
-                <Summary label="순이익" value={won(orderSales + partnerRevenue - expenseSummary.total)} accent theme={theme} />
+                <SummaryCard label="총 매출" value={won(orderSales + partnerRevenue)} theme={theme} />
+                <SummaryCard label="총 지출" value={won(expenseSummary.total)} theme={theme} />
+                <SummaryCard label="순이익" value={won(orderSales + partnerRevenue - expenseSummary.total)} accent theme={theme} />
               </div>
 
               <div className="grid-analytics" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
                 <div style={theme.card}>
-                  <Title>매출 구조</Title>
+                  <SectionTitle>매출 구조</SectionTitle>
                   <MetricRow label="수발주 매출" value={won(orderSales)} theme={theme} />
                   <MetricRow label="거래처 매출" value={won(partnerRevenue)} theme={theme} />
                   <MetricRow label="총 매출" value={won(orderSales + partnerRevenue)} theme={theme} strong />
@@ -742,7 +591,7 @@ export default function App() {
                 </div>
 
                 <div style={theme.card}>
-                  <Title>거래처 매출 TOP</Title>
+                  <SectionTitle>거래처 매출 TOP</SectionTitle>
                   {topPartners.length === 0 ? (
                     <div style={{ color: theme.muted }}>거래처 매출 데이터가 없습니다.</div>
                   ) : (
@@ -763,37 +612,25 @@ export default function App() {
           )}
 
           {tab === "지출내역" && (
-            <div className="grid-2" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
+            <div className="grid-two" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.card}>
-                <Title>주간 지출 등록</Title>
+                <SectionTitle>주간 지출 등록</SectionTitle>
                 <form onSubmit={submitExpense} style={{ display: "grid", gap: 12 }}>
                   <TextInput label="주차" value={expenseForm.weekLabel} onChange={(v) => setExpenseForm((p) => ({ ...p, weekLabel: v }))} theme={theme} />
-                  <SelectInput label="구분" value={expenseForm.type} onChange={handleExpenseTypeChange} options={["화환", "식물"]} theme={theme} />
-                  {EXPENSE_MAP[expenseForm.type].map((item) => (
-                    <TextInput key={item} label={item} type="number" value={expenseForm.items[item] || ""} onChange={(v) => handleExpenseItemChange(item, v)} theme={theme} />
-                  ))}
-                  <div style={{ padding: 16, borderRadius: 16, background: "rgba(255,255,255,.04)", border: `1px solid ${theme.line}`, fontWeight: 800 }}>
-                    총 지출: {won(currentExpenseTotal)}
-                  </div>
+                  <SelectInput label="구분" value={expenseForm.type} onChange={(v) => setExpenseForm(makeExpenseForm(v))} options={["화환", "식물"]} theme={theme} />
+                  {EXPENSE_TYPES[expenseForm.type].map((item) => <TextInput key={item} label={item} type="number" value={expenseForm.items[item] || ""} onChange={(v) => setExpenseForm((p) => ({ ...p, items: { ...p.items, [item]: v } }))} theme={theme} />)}
+                  <div style={{ padding: 16, borderRadius: 16, background: "rgba(255,255,255,.04)", border: `1px solid ${theme.line}`, fontWeight: 800 }}>총 지출: {won(currentExpenseTotal)}</div>
                   <TextareaInput label="메모" value={expenseForm.memo} onChange={(v) => setExpenseForm((p) => ({ ...p, memo: v }))} theme={theme} />
                   <button type="submit" style={theme.button}>등록하기</button>
                 </form>
               </div>
 
               <div style={theme.card}>
-                <HeaderWithFilters title="지출내역" subtitle="주 단위 지출 정리입니다." filters={["전체", "화환", "식물"]} active={expenseFilter} onChange={setExpenseFilter} theme={theme} />
-                <CardList
-                  rows={filteredExpenses}
-                  columns={[
-                    { key: "weekLabel", label: "주차" },
-                    { key: "type", label: "구분" },
-                    { label: "총 지출", render: (row) => won(row.total) },
-                    { label: "주요 항목", render: (row) => Object.entries(row.items).filter(([, value]) => value > 0).map(([key]) => key).join(" + ") || "항목 없음" },
-                    { key: "memo", label: "메모" },
-                  ]}
-                  emptyText="등록된 지출내역이 없습니다."
-                  theme={theme}
-                />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                  <div><div style={{ fontSize: 24, fontWeight: 800 }}>지출내역</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>주 단위 지출 정리입니다.</div></div>
+                  <FilterButtons items={["전체", "화환", "식물"]} active={expenseFilter} onChange={setExpenseFilter} theme={theme} />
+                </div>
+                <DataCards rows={filteredExpenses} columns={[{ key: "weekLabel", label: "주차" }, { key: "type", label: "구분" }, { label: "총 지출", render: (row) => won(row.total) }, { label: "주요 항목", render: (row) => Object.entries(row.items).filter(([, value]) => value > 0).map(([key]) => key).join(" + ") || "항목 없음" }, { key: "memo", label: "메모" }]} theme={theme} emptyText="등록된 지출내역이 없습니다." />
               </div>
             </div>
           )}

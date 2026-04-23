@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const mainTabs = [
   "홈",
@@ -168,6 +168,16 @@ const initialAnnouncements = [
   { id: 2, title: "퀵비 기준표 업데이트", date: "2026-04-12" },
 ];
 
+function loadStoredData(key, fallback) {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function won(value) {
   return `${Number(value || 0).toLocaleString()}원`;
 }
@@ -252,9 +262,7 @@ function getMonthMatrix(year, monthIndex) {
   }
 
   const weeks = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    weeks.push(cells.slice(i, i + 7));
-  }
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
   return weeks;
 }
 
@@ -269,19 +277,19 @@ export default function App() {
   const [calendarFilter, setCalendarFilter] = useState("전체");
   const [expenseFilter, setExpenseFilter] = useState("전체");
 
-  const [orders, setOrders] = useState(initialOrders);
-  const [purchases, setPurchases] = useState(initialPurchases);
-  const [partners, setPartners] = useState(initialPartners);
-  const [partnerSales, setPartnerSales] = useState(initialPartnerSales);
-  const [weeklyExpenses, setWeeklyExpenses] = useState(initialWeeklyExpenses);
-  const [announcements] = useState(initialAnnouncements);
+  const [orders, setOrders] = useState(() => loadStoredData("bloomhub_orders", initialOrders));
+  const [purchases, setPurchases] = useState(() => loadStoredData("bloomhub_purchases", initialPurchases));
+  const [partners, setPartners] = useState(() => loadStoredData("bloomhub_partners", initialPartners));
+  const [partnerSales, setPartnerSales] = useState(() => loadStoredData("bloomhub_partner_sales", initialPartnerSales));
+  const [weeklyExpenses, setWeeklyExpenses] = useState(() => loadStoredData("bloomhub_weekly_expenses", initialWeeklyExpenses));
+  const [announcements] = useState(() => loadStoredData("bloomhub_announcements", initialAnnouncements));
 
-  const [chainOptions, setChainOptions] = useState(["송죽플라워", "반하다플라워", "아이마플라워"]);
-  const [floristOptions, setFloristOptions] = useState(["중앙화원", "그린화원", "새벽화원"]);
-  const [productOptions, setProductOptions] = useState(["근조 3단", "축하 3단", "개업화분", "몬스테라"]);
-  const [partnerCategoryOptions, setPartnerCategoryOptions] = useState(["화원", "기업"]);
-  const [priceBandOptions, setPriceBandOptions] = useState(["10만원~20만원", "20만원 이상"]);
-  const [partnerProductOptions, setPartnerProductOptions] = useState(["근조 3단", "개업화분"]);
+  const [chainOptions, setChainOptions] = useState(() => loadStoredData("bloomhub_chain_options", ["송죽플라워", "반하다플라워", "아이마플라워"]));
+  const [floristOptions, setFloristOptions] = useState(() => loadStoredData("bloomhub_florist_options", ["중앙화원", "그린화원", "새벽화원"]));
+  const [productOptions, setProductOptions] = useState(() => loadStoredData("bloomhub_product_options", ["근조 3단", "축하 3단", "개업화분", "몬스테라"]));
+  const [partnerCategoryOptions, setPartnerCategoryOptions] = useState(() => loadStoredData("bloomhub_partner_category_options", ["화원", "기업"]));
+  const [priceBandOptions, setPriceBandOptions] = useState(() => loadStoredData("bloomhub_price_band_options", ["10만원~20만원", "20만원 이상"]));
+  const [partnerProductOptions, setPartnerProductOptions] = useState(() => loadStoredData("bloomhub_partner_product_options", ["근조 3단", "개업화분"]));
 
   const [orderForm, setOrderForm] = useState(emptyOrderForm());
   const [purchaseForm, setPurchaseForm] = useState(emptyOrderForm());
@@ -294,6 +302,41 @@ export default function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState("2026-04-15");
 
   const theme = darkMode ? darkTheme : lightTheme;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_orders", JSON.stringify(orders));
+  }, [orders]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_purchases", JSON.stringify(purchases));
+  }, [purchases]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_partners", JSON.stringify(partners));
+  }, [partners]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_partner_sales", JSON.stringify(partnerSales));
+  }, [partnerSales]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_weekly_expenses", JSON.stringify(weeklyExpenses));
+  }, [weeklyExpenses]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("bloomhub_chain_options", JSON.stringify(chainOptions));
+    window.localStorage.setItem("bloomhub_florist_options", JSON.stringify(floristOptions));
+    window.localStorage.setItem("bloomhub_product_options", JSON.stringify(productOptions));
+    window.localStorage.setItem("bloomhub_partner_category_options", JSON.stringify(partnerCategoryOptions));
+    window.localStorage.setItem("bloomhub_price_band_options", JSON.stringify(priceBandOptions));
+    window.localStorage.setItem("bloomhub_partner_product_options", JSON.stringify(partnerProductOptions));
+  }, [chainOptions, floristOptions, productOptions, partnerCategoryOptions, priceBandOptions, partnerProductOptions]);
 
   const currentMonthSales = monthlySales[monthlySales.length - 1].sales;
   const currentMonthExpense = weeklyExpenses.reduce((sum, item) => sum + item.total, 0);
@@ -347,12 +390,9 @@ export default function App() {
   const calendarEntries = useMemo(() => {
     const map = {};
     const pushType = (date, typeKey) => {
-      if (!map[date]) {
-        map[date] = { 수주: 0, 발주: 0, 거래처: 0, 기타: 0 };
-      }
+      if (!map[date]) map[date] = { 수주: 0, 발주: 0, 거래처: 0, 기타: 0 };
       map[date][typeKey] += 1;
     };
-
     orders.forEach((item) => pushType(item.date, "수주"));
     purchases.forEach((item) => pushType(item.date, "발주"));
     partnerSales.forEach((item) => pushType(item.date, "거래처"));
@@ -370,15 +410,9 @@ export default function App() {
   }, [orders, purchases, partnerSales, announcements, selectedCalendarDate]);
 
   const saveSharedOptions = (form) => {
-    if (form.chain && !chainOptions.includes(form.chain)) {
-      setChainOptions((prev) => [form.chain, ...prev]);
-    }
-    if (form.florist && !floristOptions.includes(form.florist)) {
-      setFloristOptions((prev) => [form.florist, ...prev]);
-    }
-    if (form.product && !productOptions.includes(form.product)) {
-      setProductOptions((prev) => [form.product, ...prev]);
-    }
+    if (form.chain && !chainOptions.includes(form.chain)) setChainOptions((prev) => [form.chain, ...prev]);
+    if (form.florist && !floristOptions.includes(form.florist)) setFloristOptions((prev) => [form.florist, ...prev]);
+    if (form.product && !productOptions.includes(form.product)) setProductOptions((prev) => [form.product, ...prev]);
   };
 
   const handleOrderSubmit = (e) => {
@@ -404,12 +438,8 @@ export default function App() {
     if (!partnerForm.category || !partnerForm.name || !partnerForm.phone) return;
     const newItem = { id: Date.now(), ...partnerForm };
     setPartners((prev) => [newItem, ...prev]);
-    if (!partnerCategoryOptions.includes(partnerForm.category)) {
-      setPartnerCategoryOptions((prev) => [partnerForm.category, ...prev]);
-    }
-    if (partnerForm.priceBand && !priceBandOptions.includes(partnerForm.priceBand)) {
-      setPriceBandOptions((prev) => [partnerForm.priceBand, ...prev]);
-    }
+    if (!partnerCategoryOptions.includes(partnerForm.category)) setPartnerCategoryOptions((prev) => [partnerForm.category, ...prev]);
+    if (partnerForm.priceBand && !priceBandOptions.includes(partnerForm.priceBand)) setPriceBandOptions((prev) => [partnerForm.priceBand, ...prev]);
     setPartnerForm(emptyPartnerForm());
   };
 
@@ -418,9 +448,7 @@ export default function App() {
     if (!partnerSaleForm.partnerName || !partnerSaleForm.product || !partnerSaleForm.amount) return;
     const newItem = { id: Date.now(), ...partnerSaleForm, amount: Number(partnerSaleForm.amount) };
     setPartnerSales((prev) => [newItem, ...prev]);
-    if (partnerSaleForm.product && !partnerProductOptions.includes(partnerSaleForm.product)) {
-      setPartnerProductOptions((prev) => [partnerSaleForm.product, ...prev]);
-    }
+    if (partnerSaleForm.product && !partnerProductOptions.includes(partnerSaleForm.product)) setPartnerProductOptions((prev) => [partnerSaleForm.product, ...prev]);
     setPartnerSaleForm(emptyPartnerSaleForm());
   };
 
@@ -429,10 +457,7 @@ export default function App() {
   };
 
   const handleExpenseItemChange = (key, value) => {
-    setExpenseForm((prev) => ({
-      ...prev,
-      items: { ...prev.items, [key]: value },
-    }));
+    setExpenseForm((prev) => ({ ...prev, items: { ...prev.items, [key]: value } }));
   };
 
   const currentExpenseTotal = useMemo(() => {
@@ -446,9 +471,7 @@ export default function App() {
       id: Date.now(),
       weekLabel: expenseForm.weekLabel,
       type: expenseForm.type,
-      items: Object.fromEntries(
-        Object.entries(expenseForm.items).map(([key, value]) => [key, Number(value || 0)])
-      ),
+      items: Object.fromEntries(Object.entries(expenseForm.items).map(([key, value]) => [key, Number(value || 0)])),
       total,
       memo: expenseForm.memo,
     };
@@ -473,13 +496,15 @@ export default function App() {
         @media (max-width: 1180px) {
           .bh-home-grid, .bh-order-grid, .bh-two-col, .bh-analytics-grid, .bh-calendar-grid { grid-template-columns: 1fr !important; }
           .bh-summary-grid { grid-template-columns: 1fr !important; }
-          .bh-table-row, .bh-table-head { grid-template-columns: 1fr !important; gap: 10px !important; }
+          .bh-photo-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 760px) {
           .bh-header { padding: 16px !important; }
           .bh-body { padding: 16px !important; }
           .bh-brand-title { font-size: 24px !important; }
-          .bh-calendar-board { grid-template-columns: repeat(2, 1fr) !important; }
+          .bh-calendar-board { gap: 6px !important; }
+          .bh-photo-grid { grid-template-columns: 1fr 1fr !important; }
+          .bh-grid-2 { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
@@ -491,18 +516,14 @@ export default function App() {
             <span style={{ ...theme.dot, background: "#28c840" }} />
             <div style={{ marginLeft: 14, fontSize: 14, opacity: 0.9 }}>BLOOM HUB</div>
           </div>
-          <button onClick={() => setDarkMode((v) => !v)} style={theme.modeButton}>
-            {darkMode ? "☀" : "☾"}
-          </button>
+          <button onClick={() => setDarkMode((v) => !v)} style={theme.modeButton}>{darkMode ? "☀" : "☾"}</button>
         </div>
 
         <div style={theme.header} className="bh-header">
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={theme.logoBox}>❋</div>
             <div>
-              <div className="bh-brand-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em" }}>
-                BLOOM HUB
-              </div>
+              <div className="bh-brand-title" style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em" }}>BLOOM HUB</div>
               <div style={{ fontSize: 14, opacity: 0.72, marginTop: 4 }}>플라워 비즈니스 통합 관리 시스템</div>
             </div>
           </div>
@@ -510,9 +531,7 @@ export default function App() {
 
         <div style={theme.tabRow} className="bh-scroll">
           {mainTabs.map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={activeTab === tab ? theme.activeTab : theme.tab}>
-              {tab}
-            </button>
+            <button key={tab} onClick={() => setActiveTab(tab)} style={activeTab === tab ? theme.activeTab : theme.tab}>{tab}</button>
           ))}
         </div>
 
@@ -559,7 +578,7 @@ export default function App() {
                     <div style={{ fontSize: 24, fontWeight: 800 }}>사진방</div>
                     <button style={theme.moreButton}>더보기</button>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="bh-photo-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     {recentPhotos.map((photo) => (
                       <div key={photo.id} style={theme.photoCard}>
                         <div style={theme.photoMock}>📸</div>
@@ -577,16 +596,14 @@ export default function App() {
             <div style={{ display: "grid", gap: 18 }}>
               <div style={theme.subTabRow}>
                 {orderTabs.map((tab) => (
-                  <button key={tab} onClick={() => setActiveOrderTab(tab)} style={activeOrderTab === tab ? theme.subActiveTab : theme.subTab}>
-                    {tab}
-                  </button>
+                  <button key={tab} onClick={() => setActiveOrderTab(tab)} style={activeOrderTab === tab ? theme.subActiveTab : theme.subTab}>{tab}</button>
                 ))}
               </div>
 
               {activeOrderTab === "수주내역" && (
                 <div className="bh-order-grid" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
                   <div style={theme.mainCard}>
-                    <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>주문등록</div>
+                    <SectionTitle title="주문등록" />
                     <form onSubmit={handleOrderSubmit} style={{ display: "grid", gap: 12 }}>
                       <SelectField label="구분" value={orderForm.type} onChange={(value) => setOrderForm((prev) => ({ ...prev, type: value }))} options={["화환", "식물"]} theme={theme} />
                       <DatalistField label="체인" value={orderForm.chain} onChange={(value) => setOrderForm((prev) => ({ ...prev, chain: value }))} options={chainOptions} listId="order-chain-options" theme={theme} />
@@ -600,7 +617,6 @@ export default function App() {
                       <button type="submit" style={theme.primaryAction}>등록하기</button>
                     </form>
                   </div>
-
                   <div style={theme.mainCard}>
                     <SimpleOrderListPanel title="수주내역" subtitle="당일 상품만 표시됩니다." filter={orderFilter} onFilterChange={setOrderFilter} rows={todayOrders} amountLabel="수주금액" theme={theme} />
                   </div>
@@ -610,7 +626,7 @@ export default function App() {
               {activeOrderTab === "발주내역" && (
                 <div className="bh-order-grid" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
                   <div style={theme.mainCard}>
-                    <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>발주등록</div>
+                    <SectionTitle title="발주등록" />
                     <form onSubmit={handlePurchaseSubmit} style={{ display: "grid", gap: 12 }}>
                       <SelectField label="구분" value={purchaseForm.type} onChange={(value) => setPurchaseForm((prev) => ({ ...prev, type: value }))} options={["화환", "식물"]} theme={theme} />
                       <DatalistField label="체인" value={purchaseForm.chain} onChange={(value) => setPurchaseForm((prev) => ({ ...prev, chain: value }))} options={chainOptions} listId="purchase-chain-options" theme={theme} />
@@ -624,7 +640,6 @@ export default function App() {
                       <button type="submit" style={theme.primaryAction}>등록하기</button>
                     </form>
                   </div>
-
                   <div style={theme.mainCard}>
                     <SimpleOrderListPanel title="발주내역" subtitle="당일 상품만 표시됩니다." filter={purchaseFilter} onFilterChange={setPurchaseFilter} rows={todayPurchases} amountLabel="발주금액" theme={theme} />
                   </div>
@@ -636,7 +651,7 @@ export default function App() {
           {activeTab === "거래처정보" && (
             <div className="bh-two-col" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.mainCard}>
-                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>거래처 등록</div>
+                <SectionTitle title="거래처 등록" />
                 <form onSubmit={handlePartnerSubmit} style={{ display: "grid", gap: 12 }}>
                   <DatalistField label="거래처 종류" value={partnerForm.category} onChange={(value) => setPartnerForm((prev) => ({ ...prev, category: value }))} options={partnerCategoryOptions} listId="partner-category-options" theme={theme} />
                   <InputField label="개인/상호" value={partnerForm.name} onChange={(value) => setPartnerForm((prev) => ({ ...prev, name: value }))} theme={theme} />
@@ -647,16 +662,8 @@ export default function App() {
                   <button type="submit" style={theme.primaryAction}>등록하기</button>
                 </form>
               </div>
-
               <div style={theme.mainCard}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 24, fontWeight: 800 }}>거래처정보</div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {["전체", ...partnerCategoryOptions].map((item) => (
-                      <button key={item} onClick={() => setPartnerFilter(item)} style={partnerFilter === item ? theme.filterActive : theme.filterButton}>{item}</button>
-                    ))}
-                  </div>
-                </div>
+                <HeaderWithFilters title="거래처정보" filters={["전체", ...partnerCategoryOptions]} active={partnerFilter} onChange={setPartnerFilter} theme={theme} />
                 <div style={{ display: "grid", gap: 12 }}>
                   {filteredPartners.map((partner) => (
                     <div key={partner.id} style={theme.infoRowCard}>
@@ -670,7 +677,7 @@ export default function App() {
                           <div style={{ color: theme.muted, marginTop: 6 }}>발주금액대</div>
                         </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
+                      <div className="bh-grid-2" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
                         <InfoMini label="연락처" value={partner.phone} theme={theme} />
                         <InfoMini label="계좌" value={partner.account || "-"} theme={theme} />
                       </div>
@@ -685,7 +692,7 @@ export default function App() {
           {activeTab === "거래처내역" && (
             <div className="bh-two-col" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.mainCard}>
-                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>거래 등록</div>
+                <SectionTitle title="거래 등록" />
                 <form onSubmit={handlePartnerSaleSubmit} style={{ display: "grid", gap: 12 }}>
                   <SelectField label="거래처명" value={partnerSaleForm.partnerName} onChange={(value) => setPartnerSaleForm((prev) => ({ ...prev, partnerName: value }))} options={partners.map((item) => item.name)} theme={theme} />
                   <SelectField label="거래종류" value={partnerSaleForm.type} onChange={(value) => setPartnerSaleForm((prev) => ({ ...prev, type: value }))} options={["화환", "식물", "기타"]} theme={theme} />
@@ -697,43 +704,19 @@ export default function App() {
                   <button type="submit" style={theme.primaryAction}>등록하기</button>
                 </form>
               </div>
-
               <div style={theme.mainCard}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-                  <div>
-                    <div style={{ fontSize: 24, fontWeight: 800 }}>거래처내역</div>
-                    <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>거래처 매출 기록입니다.</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {["전체", "화환", "식물", "기타"].map((item) => (
-                      <button key={item} onClick={() => setPartnerSaleFilter(item)} style={partnerSaleFilter === item ? theme.filterActive : theme.filterButton}>{item}</button>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ borderTop: `1px solid ${theme.line}` }}>
-                  <div className="bh-table-head" style={theme.partnerListHeaderRow}>
-                    <div>거래처명</div>
-                    <div>상품 / 거래종류</div>
-                    <div>매출금액</div>
-                    <div>결제방식</div>
-                  </div>
-                  {filteredPartnerSales.length === 0 ? (
-                    <div style={{ padding: "36px 0", textAlign: "center", color: theme.muted }}>등록된 거래내역이 없습니다.</div>
-                  ) : (
-                    filteredPartnerSales.map((row) => (
-                      <div key={row.id} className="bh-table-row" style={theme.partnerListRow}>
-                        <div style={{ fontWeight: 800 }}>{row.partnerName}</div>
-                        <div>
-                          <div style={{ fontWeight: 800 }}>{row.product}</div>
-                          <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div>
-                        </div>
-                        <div style={{ fontWeight: 800 }}>{won(row.amount)}</div>
-                        <div style={{ color: theme.muted }}>{row.payment}</div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                <HeaderWithFilters title="거래처내역" subtitle="거래처 매출 기록입니다." filters={["전체", "화환", "식물", "기타"]} active={partnerSaleFilter} onChange={setPartnerSaleFilter} theme={theme} />
+                <ResponsiveDataList
+                  rows={filteredPartnerSales}
+                  columns={[
+                    { key: "partnerName", label: "거래처명" },
+                    { key: "productType", label: "상품 / 거래종류", render: (row) => (<><div style={{ fontWeight: 800 }}>{row.product}</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div></>) },
+                    { key: "amount", label: "매출금액", render: (row) => won(row.amount) },
+                    { key: "payment", label: "결제방식" },
+                  ]}
+                  emptyText="등록된 거래내역이 없습니다."
+                  theme={theme}
+                />
               </div>
             </div>
           )}
@@ -742,7 +725,7 @@ export default function App() {
             <div className="bh-calendar-grid" style={{ display: "grid", gridTemplateColumns: "1.35fr 1fr", gap: 20 }}>
               <div style={theme.mainCard}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                     <button style={theme.moreButton} onClick={() => moveMonth(-1)}>이전달</button>
                     <div style={{ fontSize: 24, fontWeight: 800 }}>{calendarYear}년 {calendarMonth + 1}월</div>
                     <button style={theme.moreButton} onClick={() => moveMonth(1)}>다음달</button>
@@ -755,9 +738,7 @@ export default function App() {
                 </div>
 
                 <div className="bh-calendar-board" style={theme.calendarBoard}>
-                  {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-                    <div key={day} style={theme.calendarDayHead}>{day}</div>
-                  ))}
+                  {["일", "월", "화", "수", "목", "금", "토"].map((day) => <div key={day} style={theme.calendarDayHead}>{day}</div>)}
                   {calendarWeeks.flat().map((cell) => {
                     const iso = cell.date.toISOString().slice(0, 10);
                     const counts = calendarEntries[iso] || { 수주: 0, 발주: 0, 거래처: 0, 기타: 0 };
@@ -772,9 +753,7 @@ export default function App() {
                             {counts.기타 > 0 && <span style={theme.calendarCountText}>기타 {counts.기타}건</span>}
                           </div>
                         ) : (
-                          <div style={{ marginTop: 8, textAlign: "left" }}>
-                            <span style={theme.calendarCountText}>{calendarFilter} {(counts[calendarFilter] || 0)}건</span>
-                          </div>
+                          <div style={{ marginTop: 8, textAlign: "left" }}><span style={theme.calendarCountText}>{calendarFilter} {(counts[calendarFilter] || 0)}건</span></div>
                         )}
                       </button>
                     );
@@ -783,7 +762,7 @@ export default function App() {
               </div>
 
               <div style={theme.mainCard}>
-                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>{formatDate(selectedCalendarDate)} 상세</div>
+                <SectionTitle title={`${formatDate(selectedCalendarDate)} 상세`} />
                 <DetailSection title="수주" rows={selectedDateDetails.수주} formatter={(item) => `${item.product} / ${item.chain} / ${won(item.amount)}`} theme={theme} />
                 <DetailSection title="발주" rows={selectedDateDetails.발주} formatter={(item) => `${item.product} / ${item.florist} / ${won(item.amount)}`} theme={theme} />
                 <DetailSection title="거래처" rows={selectedDateDetails.거래처} formatter={(item) => `${item.product} / ${item.partnerName} / ${won(item.amount)}`} theme={theme} />
@@ -802,7 +781,7 @@ export default function App() {
 
               <div className="bh-analytics-grid" style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: 20 }}>
                 <div style={theme.mainCard}>
-                  <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>매출 구조</div>
+                  <SectionTitle title="매출 구조" />
                   <MetricRow label="수발주 매출" value={won(orderSalesTotal)} theme={theme} />
                   <MetricRow label="거래처 매출" value={won(partnerSalesTotal)} theme={theme} />
                   <MetricRow label="총 매출" value={won(orderSalesTotal + partnerSalesTotal)} theme={theme} strong />
@@ -813,21 +792,17 @@ export default function App() {
                 </div>
 
                 <div style={theme.mainCard}>
-                  <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>거래처 매출 TOP</div>
-                  {topPartnerSales.length === 0 ? (
-                    <div style={{ color: theme.muted }}>거래처 매출 데이터가 없습니다.</div>
-                  ) : (
-                    topPartnerSales.map((item, index) => (
-                      <div key={item.name} style={theme.rankRow}>
-                        <div style={theme.rankBadge}>{index + 1}</div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 800 }}>{item.name}</div>
-                          <div style={{ color: theme.muted, marginTop: 4 }}>거래처 매출</div>
-                        </div>
-                        <div style={{ fontWeight: 800 }}>{won(item.total)}</div>
+                  <SectionTitle title="거래처 매출 TOP" />
+                  {topPartnerSales.length === 0 ? <div style={{ color: theme.muted }}>거래처 매출 데이터가 없습니다.</div> : topPartnerSales.map((item, index) => (
+                    <div key={item.name} style={theme.rankRow}>
+                      <div style={theme.rankBadge}>{index + 1}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 800 }}>{item.name}</div>
+                        <div style={{ color: theme.muted, marginTop: 4 }}>거래처 매출</div>
                       </div>
-                    ))
-                  )}
+                      <div style={{ fontWeight: 800 }}>{won(item.total)}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -836,7 +811,7 @@ export default function App() {
           {activeTab === "지출내역" && (
             <div className="bh-two-col" style={{ display: "grid", gridTemplateColumns: "420px 1fr", gap: 20 }}>
               <div style={theme.mainCard}>
-                <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>주간 지출 등록</div>
+                <SectionTitle title="주간 지출 등록" />
                 <form onSubmit={handleExpenseSubmit} style={{ display: "grid", gap: 12 }}>
                   <InputField label="주차" value={expenseForm.weekLabel} onChange={(value) => setExpenseForm((prev) => ({ ...prev, weekLabel: value }))} theme={theme} />
                   <SelectField label="구분" value={expenseForm.type} onChange={handleExpenseTypeChange} options={["화환", "식물"]} theme={theme} />
@@ -848,19 +823,8 @@ export default function App() {
                   <button type="submit" style={theme.primaryAction}>등록하기</button>
                 </form>
               </div>
-
               <div style={theme.mainCard}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-                  <div>
-                    <div style={{ fontSize: 24, fontWeight: 800 }}>지출내역</div>
-                    <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>주 단위 지출 정리입니다.</div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {["전체", "화환", "식물"].map((item) => (
-                      <button key={item} onClick={() => setExpenseFilter(item)} style={expenseFilter === item ? theme.filterActive : theme.filterButton}>{item}</button>
-                    ))}
-                  </div>
-                </div>
+                <HeaderWithFilters title="지출내역" subtitle="주 단위 지출 정리입니다." filters={["전체", "화환", "식물"]} active={expenseFilter} onChange={setExpenseFilter} theme={theme} />
                 <div style={{ display: "grid", gap: 12 }}>
                   {filteredExpenses.map((row) => (
                     <div key={row.id} style={theme.infoRowCard}>
@@ -886,7 +850,7 @@ export default function App() {
                 <div style={{ fontSize: 24, fontWeight: 800 }}>사진방</div>
                 <button style={theme.moreButton}>더보기</button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
+              <div className="bh-photo-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
                 {recentPhotos.map((photo) => (
                   <div key={photo.id} style={theme.photoCard}>
                     <div style={theme.photoMock}>📸</div>
@@ -900,7 +864,7 @@ export default function App() {
 
           {activeTab === "공지사항" && (
             <div style={theme.mainCard}>
-              <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>공지사항</div>
+              <SectionTitle title="공지사항" />
               <div style={{ display: "grid", gap: 12 }}>
                 {announcements.map((notice) => (
                   <div key={notice.id} style={theme.infoRowCard}>
@@ -912,6 +876,26 @@ export default function App() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionTitle({ title }) {
+  return <div style={{ fontSize: 24, fontWeight: 800, marginBottom: 18 }}>{title}</div>;
+}
+
+function HeaderWithFilters({ title, subtitle, filters, active, onChange, theme }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
+      <div>
+        <div style={{ fontSize: 24, fontWeight: 800 }}>{title}</div>
+        {subtitle ? <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>{subtitle}</div> : null}
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {filters.map((item) => (
+          <button key={item} onClick={() => onChange(item)} style={active === item ? theme.filterActive : theme.filterButton}>{item}</button>
+        ))}
       </div>
     </div>
   );
@@ -929,41 +913,40 @@ function SummaryCard({ theme, label, value, accent }) {
 function SimpleOrderListPanel({ title, subtitle, filter, onFilterChange, rows, amountLabel, theme }) {
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 24, fontWeight: 800 }}>{title}</div>
-          <div style={{ fontSize: 13, color: theme.muted, marginTop: 6 }}>{subtitle}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["전체", "화환", "식물"].map((item) => (
-            <button key={item} onClick={() => onFilterChange(item)} style={filter === item ? theme.filterActive : theme.filterButton}>{item}</button>
+      <HeaderWithFilters title={title} subtitle={subtitle} filters={["전체", "화환", "식물"]} active={filter} onChange={onFilterChange} theme={theme} />
+      <ResponsiveDataList
+        rows={rows}
+        columns={[
+          { key: "chain", label: "체인사" },
+          { key: "productType", label: "상품 / 구분", render: (row) => (<><div style={{ fontWeight: 800 }}>{row.product}</div><div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div></>) },
+          { key: "amount", label: amountLabel, render: (row) => won(row.amount) },
+          { key: "location", label: "배송장소" },
+        ]}
+        emptyText="오늘 등록된 내역이 없습니다."
+        theme={theme}
+      />
+    </>
+  );
+}
+
+function ResponsiveDataList({ rows, columns, emptyText, theme }) {
+  if (rows.length === 0) {
+    return <div style={{ padding: "36px 0", textAlign: "center", color: theme.muted }}>{emptyText}</div>;
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {rows.map((row) => (
+        <div key={row.id} style={theme.dataCard}>
+          {columns.map((col) => (
+            <div key={col.key} style={{ display: "grid", gap: 6 }}>
+              <div style={{ fontSize: 12, color: theme.muted, fontWeight: 700 }}>{col.label}</div>
+              <div style={{ fontWeight: 700, lineHeight: 1.5 }}>{col.render ? col.render(row) : row[col.key]}</div>
+            </div>
           ))}
         </div>
-      </div>
-      <div style={{ borderTop: `1px solid ${theme.line}` }}>
-        <div className="bh-table-head" style={theme.listHeaderRow}>
-          <div>체인사</div>
-          <div>상품 / 구분</div>
-          <div>{amountLabel}</div>
-          <div>배송장소</div>
-        </div>
-        {rows.length === 0 ? (
-          <div style={{ padding: "36px 0", textAlign: "center", color: theme.muted }}>오늘 등록된 내역이 없습니다.</div>
-        ) : (
-          rows.map((row) => (
-            <div key={row.id} className="bh-table-row" style={theme.listRow}>
-              <div style={{ fontWeight: 800 }}>{row.chain}</div>
-              <div>
-                <div style={{ fontWeight: 800 }}>{row.product}</div>
-                <div style={{ fontSize: 13, color: theme.muted, marginTop: 4 }}>{row.type}</div>
-              </div>
-              <div style={{ fontWeight: 800 }}>{won(row.amount)}</div>
-              <div style={{ color: theme.muted, lineHeight: 1.5 }}>{row.location}</div>
-            </div>
-          ))
-        )}
-      </div>
-    </>
+      ))}
+    </div>
   );
 }
 
@@ -971,13 +954,7 @@ function DetailSection({ title, rows, formatter, theme }) {
   return (
     <div style={{ marginBottom: 18 }}>
       <div style={{ fontWeight: 800, marginBottom: 10 }}>{title}</div>
-      {rows.length === 0 ? (
-        <div style={{ color: theme.muted, marginBottom: 8 }}>없음</div>
-      ) : (
-        rows.map((row) => (
-          <div key={row.id} style={theme.detailItem}>{formatter(row)}</div>
-        ))
-      )}
+      {rows.length === 0 ? <div style={{ color: theme.muted, marginBottom: 8 }}>없음</div> : rows.map((row) => <div key={row.id} style={theme.detailItem}>{formatter(row)}</div>)}
     </div>
   );
 }
@@ -1015,9 +992,7 @@ function SelectField({ label, value, onChange, options, theme }) {
       <span style={theme.fieldLabel}>{label}</span>
       <select value={value} onChange={(e) => onChange(e.target.value)} style={theme.selectField}>
         <option value="">선택</option>
-        {options.map((item) => (
-          <option key={item} value={item}>{item}</option>
-        ))}
+        {options.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
     </label>
   );
@@ -1030,9 +1005,7 @@ function DatalistField({ label, value, onChange, options, listId, theme }) {
       <>
         <input list={listId} value={value} onChange={(e) => onChange(e.target.value)} style={theme.field} />
         <datalist id={listId}>
-          {options.map((item) => (
-            <option key={item} value={item} />
-          ))}
+          {options.map((item) => <option key={item} value={item} />)}
         </datalist>
       </>
     </label>
@@ -1082,7 +1055,7 @@ const lightTheme = {
   tabRow: { display: "flex", gap: 10, overflowX: "auto", padding: "16px 28px 0", background: "rgba(255,255,255,0.95)", borderBottom: "1px solid #e8edf5" },
   tab: { border: "none", borderRadius: 14, padding: "12px 16px", background: "transparent", color: "#475569", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" },
   activeTab: { border: "none", borderRadius: 14, padding: "12px 16px", background: "#111827", color: "white", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" },
-  subTabRow: { display: "flex", gap: 10 },
+  subTabRow: { display: "flex", gap: 10, flexWrap: "wrap" },
   subTab: { border: "1px solid #e7ebf3", borderRadius: 14, padding: "12px 18px", background: "white", color: "#475569", fontWeight: 700, cursor: "pointer" },
   subActiveTab: { border: "none", borderRadius: 14, padding: "12px 18px", background: "#111827", color: "white", fontWeight: 800, cursor: "pointer" },
   body: { padding: 32, background: "linear-gradient(135deg, #f7f8fb 0%, #eef2f7 100%)" },
@@ -1097,10 +1070,6 @@ const lightTheme = {
   photoMock: { height: 120, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg, #f4efe4 0%, #e5eef7 100%)", fontSize: 30 },
   filterButton: { border: "1px solid #e7ebf3", background: "white", color: "#475569", borderRadius: 12, padding: "10px 14px", fontWeight: 700, cursor: "pointer" },
   filterActive: { border: "none", background: "#111827", color: "white", borderRadius: 12, padding: "10px 14px", fontWeight: 800, cursor: "pointer" },
-  listHeaderRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr", gap: 16, padding: "18px 8px", color: "#94a3b8", fontSize: 13, fontWeight: 700 },
-  listRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr", gap: 16, alignItems: "center", padding: "20px 8px", borderTop: "1px solid #edf2f7" },
-  partnerListHeaderRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1fr", gap: 16, padding: "18px 8px", color: "#94a3b8", fontSize: 13, fontWeight: 700 },
-  partnerListRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1fr", gap: 16, alignItems: "center", padding: "20px 8px", borderTop: "1px solid #edf2f7" },
   fieldLabel: { fontSize: 13, color: "#64748b", fontWeight: 600 },
   field: { width: "100%", border: "1px solid #e7ebf3", borderRadius: 14, padding: "0 14px", height: 48, background: "white", color: "#1f2937", outline: "none" },
   selectField: { width: "100%", border: "1px solid #e7ebf3", borderRadius: 14, padding: "0 14px", height: 48, background: "white", color: "#1f2937", outline: "none", appearance: "auto" },
@@ -1114,6 +1083,7 @@ const lightTheme = {
   rankRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid #edf2f7" },
   rankBadge: { width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "#111827", color: "white", fontWeight: 800 },
   totalPreviewCard: { padding: 16, borderRadius: 16, background: "#f8fafc", border: "1px solid #e7ebf3", fontWeight: 800 },
+  dataCard: { display: "grid", gap: 14, padding: 16, border: "1px solid #edf2f7", borderRadius: 18, background: "white" },
   muted: "#64748b",
   text: "#1f2937",
   accent: "#bf9348",
@@ -1145,10 +1115,6 @@ const darkTheme = {
   photoMock: { height: 120, borderRadius: 14, display: "grid", placeItems: "center", background: "linear-gradient(135deg, rgba(215,179,106,0.18) 0%, rgba(120,146,187,0.18) 100%)", fontSize: 30 },
   filterButton: { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.04)", color: "#cbd5e1", borderRadius: 12, padding: "10px 14px", fontWeight: 700, cursor: "pointer" },
   filterActive: { border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.12)", color: "white", borderRadius: 12, padding: "10px 14px", fontWeight: 800, cursor: "pointer" },
-  listHeaderRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr", gap: 16, padding: "18px 8px", color: "#94a3b8", fontSize: 13, fontWeight: 700 },
-  listRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1.2fr", gap: 16, alignItems: "center", padding: "20px 8px", borderTop: "1px solid rgba(255,255,255,0.08)" },
-  partnerListHeaderRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1fr", gap: 16, padding: "18px 8px", color: "#94a3b8", fontSize: 13, fontWeight: 700 },
-  partnerListRow: { display: "grid", gridTemplateColumns: "1.1fr 1fr 0.9fr 1fr", gap: 16, alignItems: "center", padding: "20px 8px", borderTop: "1px solid rgba(255,255,255,0.08)" },
   fieldLabel: { fontSize: 13, color: "#94a3b8", fontWeight: 600 },
   field: { width: "100%", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "0 14px", height: 48, background: "rgba(255,255,255,0.03)", color: "#f8fafc", outline: "none" },
   selectField: { width: "100%", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "0 14px", height: 48, background: "rgba(255,255,255,0.03)", color: "#f8fafc", outline: "none", appearance: "auto" },
@@ -1162,6 +1128,7 @@ const darkTheme = {
   rankRow: { display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.08)" },
   rankBadge: { width: 32, height: 32, borderRadius: 999, display: "grid", placeItems: "center", background: "rgba(255,255,255,0.12)", color: "white", fontWeight: 800 },
   totalPreviewCard: { padding: 16, borderRadius: 16, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", fontWeight: 800 },
+  dataCard: { display: "grid", gap: 14, padding: 16, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 18, background: "rgba(255,255,255,0.03)" },
   muted: "#94a3b8",
   text: "#f8fafc",
   accent: "#d7b36a",
